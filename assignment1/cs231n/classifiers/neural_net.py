@@ -82,7 +82,7 @@ class TwoLayerNet(object):
     # Compute the softmax loss
     scores -= np.max(scores)
     exp = np.exp(scores)
-    likelihood = exp/np.sum(exp, axis=1)[:,None]
+    likelihood = exp/np.sum(exp, axis=1, keepdims=1)
     loss = np.sum(-np.log(likelihood[range(N), y]))
     loss /= N
     
