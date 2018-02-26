@@ -192,6 +192,7 @@ class FullyConnectedNet(object):
         # forward pass
         layer_in = {}
         cache = {}
+        dp_cache = {}
         layer_in[0] = X
         for idx in range(1, self.num_layers):
             W = self.params['W'+str(idx)]
@@ -203,19 +204,12 @@ class FullyConnectedNet(object):
                 layer_in[idx], cache[idx] = affine_bn_relu_forward(layer_in[idx-1], W, b, gamma, beta, bn_param)
             else:
                 layer_in[idx], cache[idx] = affine_relu_forward(layer_in[idx-1], W, b)
+            if self.use_dropout:
+                layer_in[idx], dp_cache[idx] = dropout_forward(layer_in[idx], self.dropout_param)
 
         W = self.params['W'+str(self.num_layers)]
         b = self.params['b'+str(self.num_layers)]
         scores, cache[self.num_layers] = affine_forward(layer_in[self.num_layers-1], W, b)
-        ############################################################################
-        # When using dropout, you'll need to pass self.dropout_param to each       #
-        # dropout forward pass.                                                    #
-        #                                                                          #
-        # When using batch normalization, you'll need to pass self.bn_params[0] to #
-        # the forward pass for the first batch normalization layer, pass           #
-        # self.bn_params[1] to the forward pass for the second batch normalization #
-        # layer, etc.                                                              #
-        ############################################################################
 
         # If test mode return early
         if mode == 'test':
@@ -231,6 +225,8 @@ class FullyConnectedNet(object):
         
         for idx in range(self.num_layers-1,0,-1):
             W = self.params['W'+str(idx)]
+            if self.use_dropout:
+                layer_d[idx+1] = dropout_backward(layer_d[idx+1], dp_cache[idx])
             if self.use_batchnorm:
                 layer_d[idx], dW, db, dgamma, dbeta = affine_bn_relu_backward(layer_d[idx+1], cache[idx])
                 grads['gamma'+str(idx)] = dgamma
@@ -240,15 +236,6 @@ class FullyConnectedNet(object):
             grads['W'+str(idx)] = dW+self.reg*W
             grads['b'+str(idx)] = db
             loss += 0.5*self.reg*np.sum(W*W)
-            
-        ############################################################################
-        # When using batch normalization, you don't need to regularize the scale   #
-        # and shift parameters.                                                    #
-        #                                                                          #
-        # NOTE: To ensure that your implementation matches ours and you pass the   #
-        # automated tests, make sure that your L2 regularization includes a factor #
-        # of 0.5 to simplify the expression for the gradient.                      #
-        ############################################################################
 
         return loss, grads
 
